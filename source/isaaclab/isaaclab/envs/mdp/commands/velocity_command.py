@@ -70,6 +70,7 @@ class UniformVelocityCommand(CommandTerm):
         # -- metrics
         self.metrics["error_vel_xy"] = torch.zeros(self.num_envs, device=self.device)
         self.metrics["error_vel_yaw"] = torch.zeros(self.num_envs, device=self.device)
+        self.metrics["action_acceleration"] = torch.zeros(self.num_envs, device=self.device)
         # -- similarity measure
         self.metrics["similarity_index_step_distance"] = torch.zeros(self.num_envs, device=self.device)
         self.metrics["similarity_index_air_time"] = torch.zeros(self.num_envs, device=self.device)
@@ -243,6 +244,12 @@ class UniformVelocityCommand(CommandTerm):
 
                 self.last_lidar_lin_acc = curr_lidar_lin_acc.clone()
                 self.last_lidar_ang_acc = curr_lidar_ang_acc.clone()
+        
+        ########################## Action smoothness ##########################
+        self.metrics["action_acceleration"] = torch.norm(
+            self.env.action_manager.action - 2* self.env.action_manager.prev_action + self.env.action_manager.prev_prev_action,
+            dim=-1
+        ) ** 2
 
     def reset(self, env_ids: Sequence[int] | None = None) -> dict[str, float]:
         """Reset the command generator and log metrics.

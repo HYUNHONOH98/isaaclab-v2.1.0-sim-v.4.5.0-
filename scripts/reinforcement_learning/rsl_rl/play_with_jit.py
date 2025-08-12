@@ -114,6 +114,7 @@ def main():
         "lidar_lin_acc",
         "lidar_lin_jerk",
         "lidar_ang_jerk",
+        "action_acceleration",
     ]
     final_metrics = {metric: torch.zeros(env.num_envs, device=args_cli.device) for metric in metric_terms}
     interval = int(env.unwrapped.max_episode_length)

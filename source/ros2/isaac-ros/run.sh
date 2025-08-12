@@ -15,6 +15,7 @@ cleanup() {
 ros2 launch utils/state_pub.launch.py &
 # python3 source/ros2/isaac-ros/utils/static_node_v2.py &
 /workspace/isaaclab/_isaac_sim/python.sh utils/static_node.py &
+/workspace/isaaclab/_isaac_sim/python.sh utils/analysis_node.py &
 # ros2 run rviz2 rviz2 --ros-args -p use_sim_time:=true
 ros2 launch fast_lio mapping.launch.py config_file:=ouster64.yaml rviz:=false &
 ros2 run rviz2 rviz2 --ros-args -p use_sim_time:=true

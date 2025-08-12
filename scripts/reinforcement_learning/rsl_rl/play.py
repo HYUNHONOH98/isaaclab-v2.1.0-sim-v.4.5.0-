@@ -146,12 +146,41 @@ def main():
         "lidar_lin_acc",
         "lidar_lin_jerk",
         "lidar_ang_jerk",
+        "action_acceleration",
     ]
     final_metrics = {metric: torch.zeros(env.num_envs, device=args_cli.device) for metric in metric_terms}
     interval = int(env.unwrapped.max_episode_length)
     done_env_mask = torch.zeros(env.num_envs, dtype=torch.bool, device=args_cli.device)
 
     while simulation_app.is_running():
+        from isaacsim.core.api.simulation_context import SimulationContext
+
+        sim = SimulationContext.instance()  # 이미 생성된 컨텍스트 반환
+        print("physics_dt:", sim.get_physics_dt())         # 예: 0.0083333 (120Hz)
+        print("render_dt :", sim.get_rendering_dt())          # 렌더링 간격
+        physics_context = sim.get_physics_context()
+        print("solver  :", physics_context.get_solver_type())
+        print("ccd  :", physics_context.is_ccd_enabled())
+        print("stabilization  :", physics_context.is_stablization_enabled())
+        print("get_broadphase_type  :", physics_context.get_broadphase_type())
+        print("get_enable_scene_query_support  :", physics_context.get_enable_scene_query_support())
+        print("get_friction_correlation_distance  :", physics_context.get_friction_correlation_distance())
+        print("get_friction_offset_threshold  :", physics_context.get_friction_offset_threshold())
+        print("get_gpu_collision_stack_size  :", physics_context.get_gpu_collision_stack_size())
+        print("get_physx_update_transformations_settings  :", physics_context.get_physx_update_transformations_settings())
+        print("is_gpu_dynamics_enabled  :", physics_context.is_gpu_dynamics_enabled())
+        print("get_invert_collision_group_filter  :", physics_context.get_invert_collision_group_filter())
+        print("get_gravity  :", physics_context.get_gravity())
+        print("get_gpu_total_aggregate_pairs_capacity  :", physics_context.get_gpu_total_aggregate_pairs_capacity())
+        print("get_gpu_temp_buffer_capacity  :", physics_context.get_gpu_temp_buffer_capacity())
+        print("get_gpu_max_soft_body_contacts  :", physics_context.get_gpu_max_soft_body_contacts())
+        print("get_gpu_max_rigid_patch_count  :", physics_context.get_gpu_max_rigid_patch_count())
+        print("get_gpu_max_particle_contacts  :", physics_context.get_gpu_max_particle_contacts())
+        print("get_gpu_heap_capacity  :", physics_context.get_gpu_heap_capacity())
+        print("get_gpu_found_lost_pairs_capacity  :", physics_context.get_gpu_found_lost_pairs_capacity())
+        print("get_gpu_found_lost_aggregate_pairs_capacity  :", physics_context.get_gpu_found_lost_aggregate_pairs_capacity())
+        print("get_bounce_threshold  :", physics_context.get_bounce_threshold())
+        
         start_time = time.time()
         # run everything in inference mode
         for _ in range(interval):
