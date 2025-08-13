@@ -126,18 +126,17 @@ class G1:
         if set_gains:    
             # Define the gain values for each pattern
             joint_patterns = {
-                'hip_yaw': (150, 5),   # (kp, kd) for hip_yaw joints
-                'hip_roll': (150, 5),  # (kp, kd) for hip_roll joints
-                'hip_pitch': (200, 5), # (kp, kd) for hip_pitch joints
-                'knee': (200, 5),     # (kp, kd) for knee joints
-                'ankle': (20, 2),      # (kp, kd) for ankle joints
-                # 'ankle': (10, 1),      # (kp, kd) for ankle joints
+                'hip_yaw': (100, 2),   # (kp, kd) for hip_yaw joints
+                'hip_roll': (100, 2),  # (kp, kd) for hip_roll joints
+                'hip_pitch': (100, 2), # (kp, kd) for hip_pitch joints
+                'knee': (150, 4),     # (kp, kd) for knee joints
+                'ankle': (40, 2),      # (kp, kd) for ankle joints
                 # ARM
                 'shoulder': (40, 10),
                 'elbow': (40, 10),
                 'wrist': (40, 10),
                 # waist
-                'waist': (150, 5)
+                'waist': (150, 3)
             }
 
             # Initialize lists to store the matching joint names and their respective gains
@@ -174,25 +173,16 @@ class G1:
            'left_ankle_pitch_joint' : -0.23,     
            'right_ankle_pitch_joint': -0.23,                              
         #    'torso_joint' : 0.
-            'left_shoulder_pitch_joint': -0.2,
-            'left_shoulder_roll_joint': 0.35,
-            'right_shoulder_pitch_joint': -0.2,
-            'right_shoulder_roll_joint': -0.35,
+            'left_shoulder_pitch_joint': 0.35,
+            'left_shoulder_roll_joint': 0.16,
+            'right_shoulder_pitch_joint': 0.35,
+            'right_shoulder_roll_joint': -0.16,
         }
 
 
         self.joint_indices = []
-        for joint_seq in [
-            'left_hip_pitch_joint', 'right_hip_pitch_joint',
-            'waist_yaw_joint',
-            'left_hip_roll_joint', 'right_hip_roll_joint',
-            'waist_roll_joint',
-            'left_hip_yaw_joint', 'right_hip_yaw_joint',
-            'waist_pitch_joint',
-            'left_knee_joint', 'right_knee_joint',
-            'left_ankle_pitch_joint', 'right_ankle_pitch_joint',
-            'left_ankle_roll_joint', 'right_ankle_roll_joint',
-            ]:
+        for joint_seq in ['left_hip_pitch_joint', 'left_hip_roll_joint', 'left_hip_yaw_joint', 'left_knee_joint', 'left_ankle_pitch_joint', 'left_ankle_roll_joint',
+                'right_hip_pitch_joint', 'right_hip_roll_joint', 'right_hip_yaw_joint', 'right_knee_joint', 'right_ankle_pitch_joint', 'right_ankle_roll_joint']:
             assert joint_seq in full_joint_names, f"Joint {joint_seq} not found in robot's joint names"
             self.joint_indices.append(full_joint_names.index(joint_seq))
         self.joint_indices = np.array(self.joint_indices)
@@ -235,9 +225,9 @@ parser.add_argument("--map-path", type=str, default="/Isaac/Environments/Grid/de
 parser.add_argument("--physics_dt", type=float, default=1/200, help="Physics simulation time step")
 parser.add_argument("--rendering_dt", type=float, default=1/100, help="Rendering time step")
 # Policy parameters
-parser.add_argument("--policy-path", type=str, default="/workspace/isaaclab/source/ros2/isaac-ros/assets/weights/eetrack/ckp_5000.pt", help="Path to the policy file")
+parser.add_argument("--policy-path", type=str, default="/workspace/isaaclab/source/ros2/isaac-ros/assets/weights/pre_train/g1/policy.pt", help="Path to the policy file")
 parser.add_argument("--action-scale", type=float, default=0.5, help="Scale for the action commands")
-parser.add_argument("--period", type=float, default=1.0, help="Phase command period")
+parser.add_argument("--period", type=float, default=0.8, help="Phase command period")
 
 args = parser.parse_args()
 
@@ -524,7 +514,7 @@ free_iter = 2000
 
 heading_target = 0.0
 # heading_target = -math.pi
-vel_command_b[0] = 0.45
+vel_command_b[0] = 0.1
 LAST_ITER = 5000
 
 # =============================== Main iteration ===============================
@@ -559,10 +549,10 @@ while simulation_app.is_running():
             lidar_lin_acc = (lidar_lin_vel - prev_lidar_lin_vel) / dt
             lidar_ang_acc = (lidar_ang_vel - prev_lidar_ang_vel) / dt
 
-            lidar_lin_accs = np.vstack([lidar_lin_accs, np.linalg.norm(lidar_lin_acc).reshape((1,1))])
-            lidar_ang_accs = np.vstack([lidar_ang_accs, np.linalg.norm(lidar_ang_acc).reshape((1,1))])
-            lidar_lin_vels = np.vstack([lidar_lin_vels, np.linalg.norm(lidar_lin_vel).reshape((1,1))])
-            lidar_ang_vels = np.vstack([lidar_ang_vels, np.linalg.norm(lidar_ang_vel).reshape((1,1))])
+            lidar_lin_accs = np.vstack([lidar_lin_accs, np.linalg.norm(lidar_lin_acc, ord=2).reshape((1,1))])
+            lidar_ang_accs = np.vstack([lidar_ang_accs, np.linalg.norm(lidar_ang_acc, ord=2).reshape((1,1))])
+            lidar_lin_vels = np.vstack([lidar_lin_vels, np.linalg.norm(lidar_lin_vel, ord=2).reshape((1,1))])
+            lidar_ang_vels = np.vstack([lidar_ang_vels, np.linalg.norm(lidar_ang_vel, ord=2).reshape((1,1))])
 
             if prev_lidar_lin_acc is not None:
                 lidar_lin_jitter = (lidar_lin_acc - prev_lidar_lin_acc) / dt
@@ -579,7 +569,6 @@ while simulation_app.is_running():
     # imu rate 50Hz
     if current_iter % 4 == 0 or is_first_released :
         is_first_released = False
-        base_ang_vel_b = quat_rotate_inverse(base_quat.astype(np.float32), angular_velocities)
         qj = np.array(av.get_joint_positions()[0])
         dqj = np.array(av.get_joint_velocities()[0])
         phase = (simtime % args.period) / args.period
@@ -594,30 +583,31 @@ while simulation_app.is_running():
             -1.0,
             1.0,
         )
-
+        base_ang_vel_b = quat_rotate_inverse(base_quat.astype(np.float32), angular_velocities)
         if prev_action is None:
-            prev_action = np.zeros(15)
+            prev_action = np.zeros(29)
         obs = np.concatenate([
+            # angular_velocities,
             base_ang_vel_b,
             gravity_ori,
+            vel_command_b,
             qj_rel,
             # qj,
             dqj,
-            vel_command_b,
-            np.array([sin_p, cos_p]),
             prev_action,
+            np.array([sin_p, cos_p])
         ]).astype(np.float32)
 
         obs_tensor = torch.from_numpy(obs).unsqueeze(0)
 
         action = policy(obs_tensor).detach().numpy().squeeze()
 
-        joint_targets[g1.joint_indices] = (action * args.action_scale).copy()
-        prev_action[:] = action.copy()
-
+        joint_targets = g1.default_pos +(action * args.action_scale).copy()
         if fixed == True:
             joint_targets = np.zeros(29)
-            prev_action = np.zeros(15)
+            prev_action = np.zeros(29)
+
+        prev_action = action.copy()
 
 
     # joint position target is set synchronized with physics dt (200Hz)
@@ -632,14 +622,13 @@ while simulation_app.is_running():
     # Physics rate 200Hz
     my_world.step(render=False)
 
-    
     # Rendering rate 100Hz -> render_iter = 2
     if current_iter % render_iter == 0 :
         my_world.render()
     # scan rate 10Hz
     if current_iter % lidar_iter == 0: 
         lidar_node.publish_from_dict(annotator.get_data(), frame_id="lidar_sensor", scan_rate = lidar_scan_rate, simtime=simtime)
-        
+
     if current_iter == LAST_ITER:
         print("====== ACC ======")
         print(

@@ -498,6 +498,7 @@ class G1RoughEnvCfg_PLAY(G1RoughEnvCfg):
         super().__post_init__()
 
         # make a smaller scene for play
+        self.commands.base_velocity.randomize_torque_rfi = False
         self.scene.num_envs = 50
         self.scene.env_spacing = 2.5
         self.episode_length_s = 10.0

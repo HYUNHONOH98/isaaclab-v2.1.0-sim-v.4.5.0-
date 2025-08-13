@@ -426,7 +426,7 @@ class G1LocomotionEnvCfg_PLAY(G1LocomotionEnvCfg):
 
         # set command for play.
 
-        self.commands.base_velocity.ranges.lin_vel_x = (0.1, 0.1)
+        self.commands.base_velocity.ranges.lin_vel_x = (0.3, 0.3)
         # self.commands.base_velocity.ranges.lin_vel_y = (0.3, 0.3)
         # self.commands.base_velocity.ranges.ang_vel_z = (1., 1.)
         # self.commands.base_velocity.ranges.lin_vel_x = (0.0, 0.0)

@@ -193,12 +193,8 @@ class G1:
         self.robot.set_joints_default_state(np.array(joints_default_position))
         self.robot.set_enabled_self_collisions(True)
         av = self.robot._articulation_view
-        ic(av.get_solver_position_iteration_counts())
-        ic(av.get_solver_velocity_iteration_counts())
         av.set_solver_position_iteration_counts([8])
         av.set_solver_velocity_iteration_counts([4])
-        ic(av.get_solver_position_iteration_counts())
-        ic(av.get_solver_velocity_iteration_counts())
         av.set_armatures(np.full((1, len(full_joint_names)), 0.01))
 
     def apply_action(self, action: np.array) -> None:
@@ -236,8 +232,8 @@ my_world.scene.add_default_ground_plane(
             z_position=0,
             name="default_ground_plane",
             prim_path="/World/defaultGroundPlane",
-            static_friction=10.0,
-            dynamic_friction=10.0,
+            static_friction=2.0,
+            dynamic_friction=2.0,
             restitution=0.01,
 )
 
@@ -443,10 +439,11 @@ lidar_iter = 0
 policy_iter = 0
 free_iter = 500
 current_iter = 0
-# heading_target = 0.
-heading_target = -math.pi
+heading_target = 0.
+# heading_target = -math.pi
 
 vel_command_b[0] = 0.5
+is_first_released = False
 
 while simulation_app.is_running():
 
@@ -456,6 +453,7 @@ while simulation_app.is_running():
     if current_iter == free_iter:
         stage.RemovePrim(joint_path)
         fixed = False
+        is_first_released = True
     
     av = g1.robot._articulation_view
     base_pos, base_quat = av.get_local_poses()
@@ -468,7 +466,7 @@ while simulation_app.is_running():
     angular_velocities = np.array(av.get_angular_velocities()[0]).astype(np.float32)
 
     # imu rate 50Hz
-    if current_iter % 4 == 0:
+    if current_iter % 4 == 0 or is_first_released :
         print("Policy")
         qj = np.array(av.get_joint_positions()[0])
         dqj = np.array(av.get_joint_velocities()[0])
@@ -504,10 +502,11 @@ while simulation_app.is_running():
         action = policy(obs_tensor).detach().numpy().squeeze()
 
         # action = np.zeros(29)
-        joint_targets = (action * args.action_scale).copy()
+        joint_targets = g1.default_pos +(action * args.action_scale).copy()
         # g1.apply_action(action)
         if fixed == True:
             joint_targets = np.zeros(29)
+            prev_action = np.zeros(29)
 
         prev_action = action.copy()
 

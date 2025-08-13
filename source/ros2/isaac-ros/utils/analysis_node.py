@@ -71,14 +71,17 @@ class AnalysisNode(Node):
             ])
         )
 
-        if len(self.gt_xyz) > 0 and len(self.est_xyz) > 0:
+        if len(self.gt_xyz) > 240 and len(self.est_xyz) > 240:
             gt_arr = np.array(self.gt_xyz)
             est_arr = np.array(self.est_xyz)
             # Calculate RMSE on xy axis
-            diff_xy = gt_arr[:, :2] - est_arr[:, :2]
+            diff_xy = gt_arr[240:, :2] - est_arr[240:, :2]
+
             rmse_xy = np.sqrt(np.mean(np.sum(diff_xy ** 2, axis=1)))
             self.get_logger().info(f"ATE (RMSE on xy): {rmse_xy:.6f}")
-    
+            mean_xy = np.mean(np.linalg.norm(diff_xy, axis=1))
+            std_xy = np.std(np.linalg.norm(diff_xy, axis=1))
+            self.get_logger().info(f"XY error mean: {mean_xy:.6f}, std: {std_xy:.6f}")
 
 def main():
     rclpy.init()
