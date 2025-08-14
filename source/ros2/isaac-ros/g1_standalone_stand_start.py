@@ -366,7 +366,7 @@ g1 = G1(
     prim_path="/World/g1",
     name="g1",
     usd_path= args.usd_path,
-    position=np.array([0, 0, 0.85]),
+    position=np.array([0, 0, 0.80]),
 )
 
 # =============================== LiDAR sensor ===============================
@@ -412,22 +412,6 @@ g1.initialize()
 
 sim_context = SimulationContext()
 
-# =============================== Fix G1 in the air ===============================
-from pxr import UsdPhysics, Sdf
-import omni.isaac.core.utils.prims as prim_utils
-import omni.usd
-
-joint_path = "/World/FixedJoint"
-prim_utils.create_prim(joint_path, "PhysicsFixedJoint")
-
-stage = omni.usd.get_context().get_stage()
-joint_path = Sdf.Path("/World/FixedJoint")
-joint_prim = stage.DefinePrim(joint_path, "PhysicsFixedJoint")
-fixed_joint = UsdPhysics.FixedJoint(joint_prim)
-
-fixed_joint.CreateBody0Rel().SetTargets([f"/World/g1/pelvis"])
-fixed_joint.CreateBody1Rel().SetTargets(["/World/defaultGroundPlane"])
-fixed = True
 
 # =============================== Track lidar unit ===============================
 
@@ -522,12 +506,14 @@ vel_command_b = np.zeros(3)
 policy = torch.jit.load(args.policy_path)
 
 # =============================== Hyper-parameters ===============================
-free_iter = 2000
 
 heading_target = 0.0
 # heading_target = -math.pi
 vel_command_b[0] = 0.1
-LAST_ITER = 5000
+LAST_ITER = 8000 # 40s
+
+walk_start_iter = 2000 # 10s
+stand_start_iter = 4000 # 20s
 
 # =============================== Main iteration ===============================
 is_first_released = False
@@ -538,11 +524,6 @@ while simulation_app.is_running():
     if int(simtime) != print_simtime:
         print_simtime = int(simtime)
         print(print_simtime)
-
-    if current_iter == free_iter:
-        stage.RemovePrim(joint_path)
-        fixed = False
-        is_first_released = True
     
     av = g1.robot._articulation_view
     base_pos, base_quat = av.get_local_poses()
@@ -555,32 +536,30 @@ while simulation_app.is_running():
     angular_velocities = np.array(av.get_angular_velocities()[0]).astype(np.float32)
 
     dt = my_world.get_physics_dt()
-    if fixed == False:
-        lidar_lin_vel, lidar_ang_vel = read_velocity(my_world.get_physics_dt())
-        if prev_lidar_lin_vel is not None:
-            lidar_lin_acc = (lidar_lin_vel - prev_lidar_lin_vel) / dt
-            lidar_ang_acc = (lidar_ang_vel - prev_lidar_ang_vel) / dt
+    lidar_lin_vel, lidar_ang_vel = read_velocity(my_world.get_physics_dt())
+    if prev_lidar_lin_vel is not None:
+        lidar_lin_acc = (lidar_lin_vel - prev_lidar_lin_vel) / dt
+        lidar_ang_acc = (lidar_ang_vel - prev_lidar_ang_vel) / dt
 
-            lidar_lin_accs = np.vstack([lidar_lin_accs, np.linalg.norm(lidar_lin_acc).reshape((1,1))])
-            lidar_ang_accs = np.vstack([lidar_ang_accs, np.linalg.norm(lidar_ang_acc).reshape((1,1))])
-            lidar_lin_vels = np.vstack([lidar_lin_vels, np.linalg.norm(lidar_lin_vel).reshape((1,1))])
-            lidar_ang_vels = np.vstack([lidar_ang_vels, np.linalg.norm(lidar_ang_vel).reshape((1,1))])
+        lidar_lin_accs = np.vstack([lidar_lin_accs, np.linalg.norm(lidar_lin_acc).reshape((1,1))])
+        lidar_ang_accs = np.vstack([lidar_ang_accs, np.linalg.norm(lidar_ang_acc).reshape((1,1))])
+        lidar_lin_vels = np.vstack([lidar_lin_vels, np.linalg.norm(lidar_lin_vel).reshape((1,1))])
+        lidar_ang_vels = np.vstack([lidar_ang_vels, np.linalg.norm(lidar_ang_vel).reshape((1,1))])
 
-            if prev_lidar_lin_acc is not None:
-                lidar_lin_jitter = (lidar_lin_acc - prev_lidar_lin_acc) / dt
-                lidar_ang_jitter = (lidar_ang_acc - prev_lidar_ang_acc) / dt
-                lidar_lin_jitters = np.vstack([lidar_lin_jitters, np.linalg.norm(lidar_lin_jitter).reshape((1,1))])
-                lidar_ang_jitters = np.vstack([lidar_ang_jitters, np.linalg.norm(lidar_ang_jitter).reshape((1,1))])
-            
-            prev_lidar_lin_acc = lidar_lin_acc.copy()
-            prev_lidar_ang_acc = lidar_ang_acc.copy()
+        if prev_lidar_lin_acc is not None:
+            lidar_lin_jitter = (lidar_lin_acc - prev_lidar_lin_acc) / dt
+            lidar_ang_jitter = (lidar_ang_acc - prev_lidar_ang_acc) / dt
+            lidar_lin_jitters = np.vstack([lidar_lin_jitters, np.linalg.norm(lidar_lin_jitter).reshape((1,1))])
+            lidar_ang_jitters = np.vstack([lidar_ang_jitters, np.linalg.norm(lidar_ang_jitter).reshape((1,1))])
+        
+        prev_lidar_lin_acc = lidar_lin_acc.copy()
+        prev_lidar_ang_acc = lidar_ang_acc.copy()
 
-        prev_lidar_lin_vel = lidar_lin_vel.copy()
-        prev_lidar_ang_vel = lidar_ang_vel.copy()
+    prev_lidar_lin_vel = lidar_lin_vel.copy()
+    prev_lidar_ang_vel = lidar_ang_vel.copy()
 
     # imu rate 50Hz
-    if current_iter % 4 == 0 or is_first_released :
-        is_first_released = False
+    if current_iter % 4 == 0 :
         base_ang_vel_b = quat_rotate_inverse(base_quat.astype(np.float32), angular_velocities)
         qj = np.array(av.get_joint_positions()[0])
         dqj = np.array(av.get_joint_velocities()[0])
@@ -596,6 +575,10 @@ while simulation_app.is_running():
             -1.0,
             1.0,
         )
+        if current_iter > stand_start_iter or current_iter < walk_start_iter:
+            phase = 0
+            sin_p, cos_p = np.sin(2*np.pi*phase), np.cos(2*np.pi*phase)
+            vel_command_b = np.zeros(3)
 
         if prev_action is None:
             prev_action = np.zeros(15)
@@ -616,11 +599,6 @@ while simulation_app.is_running():
 
         joint_targets[g1.joint_indices] = (action * args.action_scale).copy()
         prev_action[:] = action.copy()
-
-        if fixed == True:
-            joint_targets = np.zeros(29)
-            prev_action = np.zeros(15)
-
 
     # joint position target is set synchronized with physics dt (200Hz)
     av.set_joint_position_targets(joint_targets)

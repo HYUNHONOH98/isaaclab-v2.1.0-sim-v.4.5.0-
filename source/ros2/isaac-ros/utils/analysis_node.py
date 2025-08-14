@@ -83,6 +83,20 @@ class AnalysisNode(Node):
             std_xy = np.std(np.linalg.norm(diff_xy, axis=1))
             self.get_logger().info(f"XY error mean: {mean_xy:.6f}, std: {std_xy:.6f}")
 
+            # if len(self.gt_xyz) == 780:
+            if len(self.gt_xyz) == 480:
+                import matplotlib.pyplot as plt
+                xy_error_norm = np.linalg.norm(diff_xy, axis=1)
+                plt.figure()
+                plt.plot(xy_error_norm)
+                plt.title("XY Error Norm Over Time")
+                plt.xlabel("Frame")
+                plt.ylabel("XY Error Norm (meters)")
+                plt.grid(True)
+
+                plt.savefig(f"g1_data/exp_log/default.png")
+                print("FIGURE SAVED")
+
 def main():
     rclpy.init()
     node = AnalysisNode()

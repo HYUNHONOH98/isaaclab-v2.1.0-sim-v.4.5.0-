@@ -366,7 +366,7 @@ g1 = G1(
     prim_path="/World/g1",
     name="g1",
     usd_path= args.usd_path,
-    position=np.array([0, 0, 0.85]),
+    position=np.array([0, 0, 0.80]),
 )
 
 # =============================== LiDAR sensor ===============================
@@ -522,12 +522,14 @@ vel_command_b = np.zeros(3)
 policy = torch.jit.load(args.policy_path)
 
 # =============================== Hyper-parameters ===============================
-free_iter = 2000
+free_iter = 2000 # 10s
 
 heading_target = 0.0
 # heading_target = -math.pi
 vel_command_b[0] = 0.1
-LAST_ITER = 5000
+LAST_ITER = 8000 # 40s
+
+transition_iter = 4000 # 20s
 
 # =============================== Main iteration ===============================
 is_first_released = False
@@ -596,6 +598,10 @@ while simulation_app.is_running():
             -1.0,
             1.0,
         )
+        if current_iter > transition_iter:
+            phase = 0
+            sin_p, cos_p = np.sin(2*np.pi*phase), np.cos(2*np.pi*phase)
+            vel_command_b = np.zeros(3)
 
         if prev_action is None:
             prev_action = np.zeros(15)
